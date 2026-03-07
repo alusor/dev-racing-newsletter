@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Newsletter } from "@/lib/models/newsletter";
-import { zavu, zavuSendOptions } from "@/lib/zavu";
+import { wrapEmailTemplate } from "@/lib/email-template";
+import { resend } from "@/lib/resend";
 
 export const maxDuration = 30;
 
@@ -36,41 +37,33 @@ export async function POST(req: Request) {
 
   const latestPreview = newsletter.previews[newsletter.previews.length - 1];
 
-  const plainText = [
-    newsletter.title,
-    latestPreview.subject,
-    "",
-    ...latestPreview.sections.map((s) => s.title),
-    "",
-    "Abre este email para ver el contenido completo.",
-    "Generado automaticamente con IA - Newsletter Hub",
-  ].join("\n");
-
-  const truncatedText =
-    plainText.length > 1500
-      ? plainText.slice(0, 1497) + "..."
-      : plainText;
-
-  const payload = {
-    to: email,
-    channel: "email" as const,
-    subject: `[Preview] ${latestPreview.subject}`,
-    text: truncatedText,
-  };
-
-  console.log("Zavu payload size:", JSON.stringify(payload).length);
+  const htmlEmail = wrapEmailTemplate(newsletter.title, {
+    subject: latestPreview.subject,
+    htmlContent: latestPreview.htmlContent,
+    sections: latestPreview.sections,
+    generatedAt: latestPreview.generatedAt,
+  });
 
   try {
-    const result = await zavu.messages.send(payload, zavuSendOptions);
+    const { data, error } = await resend.emails.send({
+      from: "Newsletter Hub <onboarding@resend.dev>",
+      to: email,
+      subject: `[Preview] ${latestPreview.subject}`,
+      html: htmlEmail,
+    });
+
+    if (error) {
+      return NextResponse.json(
+        { error: "Failed to send email", details: error.message },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      messageId: result.message?.id,
-      status: result.message?.status,
+      emailId: data?.id,
     });
-  } catch (err: unknown) {
-    const errObj = err as Record<string, unknown>;
-    console.error("Zavu error:", JSON.stringify(errObj?.error, null, 2));
+  } catch (err) {
     return NextResponse.json(
       {
         error: "Failed to send email",
