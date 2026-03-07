@@ -4,6 +4,8 @@ import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
 import { Newsletter } from "@/lib/models/newsletter";
 import { generateNewsletterEdition } from "@/lib/newsletter-generator";
+import { wrapEmailTemplate } from "@/lib/email-template";
+import { resend } from "@/lib/resend";
 import {
   BASE_PRICES,
   CREATOR_FREE_THRESHOLD,
@@ -39,14 +41,19 @@ Ahora que tienes los 3 datos:
 a) Usa defineNewsletter para crear el newsletter.
 b) Usa generatePreview para generar UN preview.
 c) Dile al usuario: "Aquí tienes un preview de cómo se vería tu newsletter. Esto es una muestra generada por IA."
-d) Menciona que puedes enviar un preview de prueba a su email si lo desea.
-e) Explica el modelo de precios:
-   - El precio base es $X/mes según la frecuencia elegida
-   - Entre más suscriptores tenga, más barato se vuelve para todos (hasta 70% de descuento)
-   - A partir de ${CREATOR_FREE_THRESHOLD} suscriptores, el creador recibe su newsletter GRATIS porque queda subsidiado por los demás
-   - Recomiéndale invitar a más personas para llegar al umbral gratuito
 
-PASO 5 — PUBLICAR
+PASO 5 — ENVIAR PRUEBA
+Pregunta al usuario: "¿Quieres que te envíe este preview a tu email para que lo veas en tu inbox?"
+Si dice que sí, pide su email y usa sendTestEmail para enviarlo.
+Si dice que no, continúa al paso 6.
+
+PASO 6 — PRICING Y PUBLICACIÓN
+Explica el modelo de precios:
+- El precio base es $X/mes según la frecuencia elegida
+- Entre más suscriptores tenga, más barato se vuelve para todos (hasta 70% de descuento)
+- A partir de ${CREATOR_FREE_THRESHOLD} suscriptores, el creador recibe su newsletter GRATIS porque queda subsidiado por los demás
+- Recomiéndale invitar a más personas para llegar al umbral gratuito
+
 Pregunta si quiere publicarlo en el marketplace.
 Si dice que sí, usa publishNewsletter.
 Después confirma que ya está disponible y puede compartir el link.
@@ -142,6 +149,45 @@ Después confirma que ya está disponible y puede compartir el link.
             htmlContent: edition.htmlContent,
             newsletterId,
             message: `Preview generado: "${edition.subject}"`,
+          };
+        },
+      }),
+
+      sendTestEmail: tool({
+        description:
+          "Envía un preview del newsletter al email del usuario para que lo vea en su inbox",
+        inputSchema: z.object({
+          email: z.string().email().describe("Email del usuario"),
+          newsletterId: z.string().describe("ID del newsletter"),
+        }),
+        execute: async ({ email, newsletterId }) => {
+          await connectDB();
+          const newsletter = await Newsletter.findById(newsletterId);
+          if (!newsletter || newsletter.previews.length === 0) {
+            return { message: "No se encontró el newsletter o no tiene previews." };
+          }
+
+          const latest = newsletter.previews[newsletter.previews.length - 1];
+          const html = wrapEmailTemplate(newsletter.title, {
+            subject: latest.subject,
+            htmlContent: latest.htmlContent,
+            sections: latest.sections,
+            generatedAt: latest.generatedAt,
+          });
+
+          const { error } = await resend.emails.send({
+            from: "Newsletter Hub <onboarding@resend.dev>",
+            to: email,
+            subject: `[Preview] ${latest.subject}`,
+            html,
+          });
+
+          if (error) {
+            return { message: `Error al enviar: ${error.message}` };
+          }
+
+          return {
+            message: `Preview enviado exitosamente a ${email}. Revisa tu inbox.`,
           };
         },
       }),

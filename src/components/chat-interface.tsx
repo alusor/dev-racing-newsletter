@@ -152,6 +152,7 @@ export function ChatInterface() {
                       const labels: Record<string, string> = {
                         defineNewsletter: "Creando newsletter...",
                         generatePreview: "Generando preview...",
+                        sendTestEmail: "Enviando email de prueba...",
                         publishNewsletter: "Publicando...",
                       };
 
