@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
+import { ArrowUp, ArrowRight, Loader2 } from "lucide-react";
 
 type AnyPart = UIMessage["parts"][number] & Record<string, unknown>;
 
@@ -20,7 +21,7 @@ export function ChatInterface() {
         parts: [
           {
             type: "text" as const,
-            text: "¡Hola! Soy tu asistente para crear newsletters. Cuéntame, ¿sobre qué tema te gustaría recibir un newsletter? Puede ser cualquier cosa: tecnología, finanzas, cocina, fitness, ciencia... ¡tú decides!",
+            text: "Hola, soy tu asistente para crear newsletters. Cuéntame, ¿sobre qué tema te gustaría recibir un newsletter? Puede ser cualquier cosa: tecnología, finanzas, cocina, fitness, ciencia... tú decides.",
           },
         ],
       },
@@ -61,9 +62,9 @@ export function ChatInterface() {
     : null;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] max-w-3xl mx-auto">
+    <div className="flex flex-col h-[calc(100vh-80px)] max-w-2xl mx-auto">
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-4 pb-4">
+        <div className="space-y-3 pb-4">
           {messages.map((message) => {
             const role = message.role as string;
             return (
@@ -74,10 +75,10 @@ export function ChatInterface() {
               }`}
             >
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                className={`max-w-[80%] rounded-xl px-4 py-2.5 ${
                   role === "user"
-                    ? "bg-violet-600 text-white"
-                    : "bg-muted/80 text-foreground"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-foreground"
                 }`}
               >
                 {(message.parts as AnyPart[]).map((part, i) => {
@@ -100,7 +101,7 @@ export function ChatInterface() {
                       return (
                         <div
                           key={i}
-                          className="mt-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs"
+                          className="mt-2 p-2.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-xs"
                         >
                           {String(result?.message || "Procesado")}
                         </div>
@@ -111,7 +112,7 @@ export function ChatInterface() {
                         key={i}
                         className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"
                       >
-                        <span className="animate-spin">⚙️</span>
+                        <Loader2 className="w-3 h-3 animate-spin" />
                         Procesando...
                       </div>
                     );
@@ -126,11 +127,11 @@ export function ChatInterface() {
 
           {isLoading && (messages[messages.length - 1]?.role as string) === "user" && (
             <div className="flex justify-start">
-              <div className="bg-muted/80 rounded-2xl px-4 py-3">
+              <div className="bg-muted rounded-xl px-4 py-2.5">
                 <div className="flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:-0.3s]" />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:-0.15s]" />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:-0.3s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:-0.15s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" />
                 </div>
               </div>
             </div>
@@ -141,14 +142,15 @@ export function ChatInterface() {
       {newsletterId && (
         <div className="px-4 pb-2">
           <Link href={`/newsletter/${newsletterId}`}>
-            <Button className="w-full bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500">
+            <Button className="w-full">
               Ver mi newsletter en el marketplace
+              <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
           </Link>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="p-4 border-t border-border/40">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-border">
         <div className="flex gap-2">
           <Textarea
             value={input}
@@ -169,19 +171,7 @@ export function ChatInterface() {
             size="icon"
             className="shrink-0 h-11 w-11"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-              />
-            </svg>
+            <ArrowUp className="w-4 h-4" />
           </Button>
         </div>
       </form>

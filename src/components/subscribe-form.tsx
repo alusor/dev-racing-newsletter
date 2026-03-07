@@ -54,7 +54,7 @@ export function SubscribeForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="text-sm font-medium mb-2 block">Email</label>
+        <label className="text-sm font-medium mb-1.5 block">Email</label>
         <Input
           type="email"
           placeholder="tu@email.com"
@@ -65,17 +65,17 @@ export function SubscribeForm({
       </div>
 
       <div>
-        <label className="text-sm font-medium mb-2 block">Frecuencia</label>
+        <label className="text-sm font-medium mb-1.5 block">Frecuencia</label>
         <div className="grid grid-cols-2 gap-2">
           {(["daily", "weekly"] as const).map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setSelectedFreq(f)}
-              className={`p-3 rounded-lg border text-sm font-medium transition-all ${
+              className={`p-2.5 rounded-md border text-sm font-medium transition-colors ${
                 selectedFreq === f
-                  ? "border-violet-500 bg-violet-500/10 text-violet-300"
-                  : "border-border/50 text-muted-foreground hover:border-border"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/20"
               }`}
             >
               {f === "daily" ? "Diario" : "Semanal"}
@@ -85,14 +85,10 @@ export function SubscribeForm({
       </div>
 
       {error && (
-        <p className="text-sm text-red-400">{error}</p>
+        <p className="text-sm text-destructive">{error}</p>
       )}
 
-      <Button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500"
-      >
+      <Button type="submit" disabled={loading} className="w-full">
         {loading ? "Procesando..." : "Continuar al checkout"}
       </Button>
     </form>
