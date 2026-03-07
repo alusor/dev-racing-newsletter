@@ -4,6 +4,10 @@ export function wrapEmailTemplate(
   newsletterTitle: string,
   edition: IEdition
 ): string {
+  const cleanHtml = edition.htmlContent
+    .replace(/<a\b[^>]*>/gi, "<span>")
+    .replace(/<\/a>/gi, "</span>");
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -17,11 +21,10 @@ export function wrapEmailTemplate(
       <h1 style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600; color: #0f0f1a; letter-spacing: -0.01em;">${newsletterTitle}</h1>
     </div>
     <div style="padding: 0;">
-      ${edition.htmlContent}
+      ${cleanHtml}
     </div>
     <div style="padding: 24px; border-top: 1px solid #e5e5e5; text-align: center; color: #6b7280; font-size: 12px; line-height: 1.5;">
       <p style="margin: 0 0 8px;">Recibiste este email porque estás suscrito a <strong style="color: #374151;">${newsletterTitle}</strong>.</p>
-      <a href="#" style="color: #4f46e5; text-decoration: none;">Cancelar suscripción</a>
     </div>
   </div>
 </body>

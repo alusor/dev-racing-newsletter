@@ -4,9 +4,7 @@ import { Newsletter } from "@/lib/models/newsletter";
 import { Subscriber } from "@/lib/models/subscriber";
 import { generateNewsletterEdition } from "@/lib/newsletter-generator";
 import { wrapEmailTemplate } from "@/lib/email-template";
-import Zavu from "@zavudev/sdk";
-
-const zavu = new Zavu({ apiKey: process.env.ZAVU_API_KEY! });
+import { resend } from "@/lib/resend";
 
 export const maxDuration = 60;
 
@@ -20,7 +18,6 @@ export async function POST(req: Request) {
   if (frequency) query.frequency = frequency;
 
   const newsletters = await Newsletter.find(query);
-
   const results = [];
 
   for (const newsletter of newsletters) {
@@ -28,7 +25,8 @@ export async function POST(req: Request) {
       newsletter.topic,
       newsletter.style,
       newsletter.frequency,
-      newsletter.title
+      newsletter.title,
+      { withImage: false }
     );
 
     newsletter.previews.push({
@@ -52,14 +50,11 @@ export async function POST(req: Request) {
 
     for (const subscriber of subscribers) {
       try {
-        await zavu.messages.send({
+        await resend.emails.send({
+          from: "Newsletter Hub <onboarding@resend.dev>",
           to: subscriber.email,
-          channel: "email",
           subject: edition.subject,
-          text: edition.sections
-            .map((s) => `${s.title}\n${s.content}`)
-            .join("\n\n"),
-          htmlBody: htmlEmail,
+          html: htmlEmail,
         });
         results.push({
           email: subscriber.email,

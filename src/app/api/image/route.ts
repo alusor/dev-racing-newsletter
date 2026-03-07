@@ -16,21 +16,28 @@ export async function POST(req: Request) {
 Topic: ${topic}. 
 Style: Clean editorial design with subtle gradients. 
 Abstract geometric shapes or icons related to the topic. 
-Color palette: Deep purple and cyan tones on dark background. 
 No text or letters in the image. 
 Professional, high-end magazine aesthetic.`,
     n: 1,
     size: "1024x1024",
+    quality: "low",
   });
 
-  const imageUrl = response.data?.[0]?.url || "";
+  const data = response.data?.[0];
+  let imageUrl = "";
 
-  if (newsletterId) {
+  if (data?.url) {
+    imageUrl = data.url;
+  } else if (data?.b64_json) {
+    imageUrl = `data:image/png;base64,${data.b64_json}`;
+  }
+
+  if (newsletterId && imageUrl) {
     await connectDB();
     await Newsletter.findByIdAndUpdate(newsletterId, {
       coverImageUrl: imageUrl,
     });
   }
 
-  return NextResponse.json({ imageUrl });
+  return NextResponse.json({ imageUrl: imageUrl ? "generated" : "" });
 }

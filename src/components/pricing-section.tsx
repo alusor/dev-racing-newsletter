@@ -1,6 +1,12 @@
 "use client";
 
-import { calculatePrice, BASE_PRICES } from "@/lib/pricing";
+import {
+  calculatePrice,
+  BASE_PRICES,
+  CREATOR_FREE_THRESHOLD,
+  isCreatorFree,
+  subscribersUntilFree,
+} from "@/lib/pricing";
 import { Check } from "lucide-react";
 
 interface PricingSectionProps {
@@ -49,13 +55,24 @@ export function PricingSection({
         ))}
       </div>
 
-      <div className="mt-4 p-3 rounded-md bg-muted text-xs text-muted-foreground">
-        <p>
-          Actualmente <strong className="text-foreground">{subscriberCount}</strong> suscriptores.
-          {subscriberCount < 35
-            ? ` Con ${35 - subscriberCount} más, el precio baja a $${calculatePrice(frequency, 35).price}/mes.`
-            : " Descuento grupal activo."}
-        </p>
+      <div className="mt-4 space-y-2">
+        <div className="p-3 rounded-md bg-muted text-xs text-muted-foreground">
+          <p>
+            Actualmente <strong className="text-foreground">{subscriberCount}</strong> suscriptores.
+            {subscriberCount < 35
+              ? ` Con ${35 - subscriberCount} más, el precio baja a $${calculatePrice(frequency, 35).price}/mes.`
+              : " Descuento grupal activo."}
+          </p>
+        </div>
+        <div className={`p-3 rounded-md text-xs ${isCreatorFree(subscriberCount) ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+          {isCreatorFree(subscriberCount) ? (
+            <p>El creador recibe este newsletter <strong>gratis</strong> — subsidiado por los suscriptores.</p>
+          ) : (
+            <p>
+              Creadores: con <strong>{subscribersUntilFree(subscriberCount)}</strong> suscriptores más (total {CREATOR_FREE_THRESHOLD}), el creador lo recibe <strong>gratis</strong>.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

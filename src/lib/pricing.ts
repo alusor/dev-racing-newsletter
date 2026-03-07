@@ -3,6 +3,8 @@ export const BASE_PRICES = {
   weekly: 4.99,
 } as const;
 
+export const CREATOR_FREE_THRESHOLD = 10;
+
 export function calculatePrice(
   frequency: "daily" | "weekly",
   subscriberCount: number
@@ -15,4 +17,12 @@ export function calculatePrice(
     originalPrice,
     discount: Math.round(discountPercent * 100),
   };
+}
+
+export function isCreatorFree(subscriberCount: number): boolean {
+  return subscriberCount >= CREATOR_FREE_THRESHOLD;
+}
+
+export function subscribersUntilFree(subscriberCount: number): number {
+  return Math.max(0, CREATOR_FREE_THRESHOLD - subscriberCount);
 }

@@ -11,6 +11,26 @@ import { ArrowUp, ArrowRight, Loader2 } from "lucide-react";
 
 type AnyPart = UIMessage["parts"][number] & Record<string, unknown>;
 
+function isToolPart(part: AnyPart): boolean {
+  const t = String(part.type);
+  return t.startsWith("tool-") || t === "dynamic-tool";
+}
+
+function getToolName(part: AnyPart): string | null {
+  const t = String(part.type);
+  if (t === "dynamic-tool") return String(part.toolName || "");
+  if (t.startsWith("tool-")) return t.slice(5);
+  return null;
+}
+
+function isPublishResult(part: AnyPart): boolean {
+  return getToolName(part) === "publishNewsletter" && part.state === "output-available";
+}
+
+function isPreviewResult(part: AnyPart): boolean {
+  return getToolName(part) === "generatePreview" && part.state === "output-available";
+}
+
 export function ChatInterface() {
   const { messages, sendMessage, status } = useChat({
     id: "newsletter-creator",
@@ -21,7 +41,7 @@ export function ChatInterface() {
         parts: [
           {
             type: "text" as const,
-            text: "Hola, soy tu asistente para crear newsletters. Cuéntame, ¿sobre qué tema te gustaría recibir un newsletter? Puede ser cualquier cosa: tecnología, finanzas, cocina, fitness, ciencia... tú decides.",
+            text: "Hola, soy tu asistente para crear newsletters personalizados. Vamos a diseñar el tuyo paso a paso.\n\n¿Sobre qué tema te gustaría recibir un newsletter? Puede ser cualquier cosa: tecnología, ciberseguridad, startups, cocina, fitness, ciencia, finanzas... tú decides.",
           },
         ],
       },
@@ -50,13 +70,7 @@ export function ChatInterface() {
     .filter((m) => m.role === "assistant")
     .flatMap((m) => m.parts as AnyPart[]);
 
-  const publishedPart = allParts.find(
-    (p) =>
-      String(p.type).startsWith("tool-") &&
-      p.toolName === "publishNewsletter" &&
-      p.state === "output-available"
-  );
-
+  const publishedPart = allParts.find(isPublishResult);
   const newsletterId = publishedPart
     ? (publishedPart.output as { id?: string } | undefined)?.id ?? null
     : null;
@@ -68,61 +82,96 @@ export function ChatInterface() {
           {messages.map((message) => {
             const role = message.role as string;
             return (
-            <div
-              key={message.id}
-              className={`flex ${
-                role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
               <div
-                className={`max-w-[80%] rounded-xl px-4 py-2.5 ${
-                  role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
-                }`}
+                key={message.id}
+                className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}
               >
-                {(message.parts as AnyPart[]).map((part, i) => {
-                  const partType = String(part.type);
+                <div
+                  className={`rounded-xl px-4 py-2.5 ${
+                    role === "user"
+                      ? "max-w-[80%] bg-primary text-primary-foreground"
+                      : "max-w-[90%] bg-muted text-foreground"
+                  }`}
+                >
+                  {(message.parts as AnyPart[]).map((part, i) => {
+                    const partType = String(part.type);
 
-                  if (partType === "text" && part.text) {
-                    return (
-                      <p
-                        key={i}
-                        className="text-sm leading-relaxed whitespace-pre-wrap"
-                      >
-                        {String(part.text)}
-                      </p>
-                    );
-                  }
+                    if (partType === "text" && part.text) {
+                      return (
+                        <p
+                          key={i}
+                          className="text-sm leading-relaxed whitespace-pre-wrap"
+                        >
+                          {String(part.text)}
+                        </p>
+                      );
+                    }
 
-                  if (partType.startsWith("tool-") || partType === "dynamic-tool") {
-                    if (part.state === "output-available") {
-                      const result = part.output as Record<string, unknown> | undefined;
+                    if (isToolPart(part)) {
+                      if (part.state === "output-available") {
+                        const result = part.output as Record<string, unknown> | undefined;
+
+                        if (isPreviewResult(part) && result?.htmlContent) {
+                          return (
+                            <div key={i} className="mt-3">
+                              <div className="mb-2 p-2 rounded-md bg-primary/10 border border-primary/20 text-primary text-xs">
+                                Vista previa generada
+                              </div>
+                              <div className="rounded-lg border border-border overflow-hidden">
+                                <div
+                                  dangerouslySetInnerHTML={{
+                                    __html: String(result.htmlContent),
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={i}
+                            className="mt-2 p-2.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-xs"
+                          >
+                            {String(result?.message || "Procesado")}
+                          </div>
+                        );
+                      }
+
+                      if (part.state === "error") {
+                        return (
+                          <div
+                            key={i}
+                            className="mt-2 p-2.5 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-xs"
+                          >
+                            Error al procesar. Intenta de nuevo.
+                          </div>
+                        );
+                      }
+
+                      const toolName = getToolName(part);
+                      const labels: Record<string, string> = {
+                        defineNewsletter: "Creando newsletter...",
+                        generatePreview: "Generando preview...",
+                        publishNewsletter: "Publicando...",
+                      };
+
                       return (
                         <div
                           key={i}
-                          className="mt-2 p-2.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-xs"
+                          className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"
                         >
-                          {String(result?.message || "Procesado")}
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          {(toolName && labels[toolName]) || "Procesando..."}
                         </div>
                       );
                     }
-                    return (
-                      <div
-                        key={i}
-                        className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"
-                      >
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Procesando...
-                      </div>
-                    );
-                  }
 
-                  return null;
-                })}
+                    return null;
+                  })}
+                </div>
               </div>
-            </div>
-          );
+            );
           })}
 
           {isLoading && (messages[messages.length - 1]?.role as string) === "user" && (
