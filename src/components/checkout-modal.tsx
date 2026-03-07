@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { calculatePrice } from "@/lib/pricing";
+import { CheckCircle2 } from "lucide-react";
 
 interface CheckoutModalProps {
   open: boolean;
@@ -48,17 +49,17 @@ export function CheckoutModal({
             </DialogHeader>
 
             <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-muted/50">
+              <div className="p-4 rounded-md bg-muted">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="font-medium">{newsletterTitle}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="font-medium text-sm">{newsletterTitle}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Suscripción{" "}
                       {frequency === "daily" ? "diaria" : "semanal"}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">${price}/mes</p>
+                    <p className="font-semibold text-sm">${price}/mes</p>
                     {discount > 0 && (
                       <p className="text-xs text-muted-foreground line-through">
                         ${originalPrice}/mes
@@ -70,7 +71,7 @@ export function CheckoutModal({
 
               <Separator />
 
-              <form onSubmit={handlePay} className="space-y-4">
+              <form onSubmit={handlePay} className="space-y-3">
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">
                     Número de tarjeta
@@ -100,20 +101,17 @@ export function CheckoutModal({
                   Demo — No se realizará ningún cargo real
                 </p>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-violet-600 to-cyan-600"
-                >
+                <Button type="submit" className="w-full">
                   Pagar ${price}/mes
                 </Button>
               </form>
             </div>
           </>
         ) : (
-          <div className="text-center py-8">
-            <div className="text-5xl mb-4">🎉</div>
-            <h3 className="text-xl font-bold mb-2">¡Suscripción exitosa!</h3>
-            <p className="text-muted-foreground mb-6">
+          <div className="text-center py-6">
+            <CheckCircle2 className="w-10 h-10 text-primary mx-auto mb-3" />
+            <h3 className="text-lg font-semibold mb-1.5">Suscripción exitosa</h3>
+            <p className="text-sm text-muted-foreground mb-6">
               Recibirás <strong>{newsletterTitle}</strong>{" "}
               {frequency === "daily"
                 ? "todos los días"

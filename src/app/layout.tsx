@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Plus_Jakarta_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const jakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const playfair = Playfair_Display({
+const instrumentSerif = Instrument_Serif({
   variable: "--font-display",
   subsets: ["latin"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -26,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark">
       <body
-        className={`${inter.variable} ${playfair.variable} antialiased bg-background text-foreground`}
+        className={`${jakarta.variable} ${instrumentSerif.variable} antialiased bg-background text-foreground`}
       >
         {children}
       </body>
