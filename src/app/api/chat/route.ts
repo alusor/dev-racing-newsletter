@@ -1,9 +1,13 @@
-import { streamText, tool, stepCountIs } from "ai";
+import { streamText, tool, stepCountIs, convertToModelMessages } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
 import { Newsletter } from "@/lib/models/newsletter";
 import { generateNewsletterEdition } from "@/lib/newsletter-generator";
+import {
+  BASE_PRICES,
+  CREATOR_FREE_THRESHOLD,
+} from "@/lib/pricing";
 
 export const maxDuration = 60;
 
@@ -13,29 +17,65 @@ export async function POST(req: Request) {
   const result = streamText({
     model: openai("gpt-4o"),
     system: `Eres el asistente de Newsletter Hub, una plataforma donde la gente crea newsletters generados por IA.
-Tu rol es guiar al usuario para definir su newsletter ideal. Sé amigable, creativo y entusiasta.
+Tu rol es guiar al usuario paso a paso para definir y previsualizar su newsletter ideal.
 
-Flujo de conversación:
-1. Pregunta sobre el TEMA del newsletter (tecnología, finanzas, salud, etc.)
-2. Pregunta sobre la FRECUENCIA preferida (diario o semanal)
-3. Pregunta sobre el ESTILO (profesional, casual, técnico, divertido)
-4. Una vez tengas los 3 datos, usa la herramienta defineNewsletter para crear la definición
-5. Después genera 2 previews usando generatePreview
-6. Finalmente usa publishNewsletter para publicarlo en el marketplace
+## FLUJO DE CONVERSACIÓN (sigue este orden estrictamente)
 
-Habla en español. Sé conciso pero entusiasta. Usa preguntas directas para avanzar rápido.
-Cuando tengas suficiente información, no preguntes más y procede a crear el newsletter.`,
-    messages,
+PASO 1 — TEMA
+Pregunta al usuario sobre qué tema le gustaría su newsletter. Da ejemplos concretos y variados.
+Espera su respuesta antes de continuar.
+
+PASO 2 — FRECUENCIA
+Una vez que sepas el tema, pregunta si lo quiere diario o semanal.
+Menciona brevemente los precios: diario $${BASE_PRICES.daily}/mes, semanal $${BASE_PRICES.weekly}/mes.
+Espera su respuesta.
+
+PASO 3 — ESTILO
+Pregunta qué tono prefiere: profesional, casual, técnico, o divertido.
+Espera su respuesta.
+
+PASO 4 — CREAR Y PREVIEW
+Ahora que tienes los 3 datos:
+a) Usa defineNewsletter para crear el newsletter.
+b) Usa generatePreview para generar UN preview.
+c) Dile al usuario: "Aquí tienes un preview de cómo se vería tu newsletter. Esto es una muestra generada por IA."
+d) Menciona que puedes enviar un preview de prueba a su email si lo desea.
+e) Explica el modelo de precios:
+   - El precio base es $X/mes según la frecuencia elegida
+   - Entre más suscriptores tenga, más barato se vuelve para todos (hasta 70% de descuento)
+   - A partir de ${CREATOR_FREE_THRESHOLD} suscriptores, el creador recibe su newsletter GRATIS porque queda subsidiado por los demás
+   - Recomiéndale invitar a más personas para llegar al umbral gratuito
+
+PASO 5 — PUBLICAR
+Pregunta si quiere publicarlo en el marketplace.
+Si dice que sí, usa publishNewsletter.
+Después confirma que ya está disponible y puede compartir el link.
+
+## REGLAS
+- Habla en español
+- NUNCA saltes pasos. Haz UNA pregunta a la vez y espera la respuesta
+- Sé amigable y entusiasta pero conciso
+- Cuando muestres info del preview, describe brevemente las secciones que se generaron
+- NO uses todas las herramientas de golpe. Sigue el flujo paso a paso`,
+    messages: await convertToModelMessages(messages),
     tools: {
       defineNewsletter: tool({
         description:
-          "Define un nuevo newsletter con los datos recopilados del usuario",
+          "Define un nuevo newsletter con los datos recopilados del usuario. Solo usar después de tener tema, frecuencia y estilo.",
         inputSchema: z.object({
           title: z.string().describe("Título atractivo para el newsletter"),
-          description: z.string().describe("Descripción breve de 1-2 oraciones"),
-          topic: z.string().describe("Tópico slug: artificial-intelligence, startups, developer-tools, finance, health, design, science, marketing, u otro"),
+          description: z
+            .string()
+            .describe("Descripción breve de 1-2 oraciones"),
+          topic: z
+            .string()
+            .describe(
+              "Tópico slug: artificial-intelligence, startups, developer-tools, finance, health, design, science, marketing, cybersecurity, u otro"
+            ),
           frequency: z.enum(["daily", "weekly"]).describe("Frecuencia"),
-          style: z.string().describe("Estilo: professional, casual, technical, fun"),
+          style: z
+            .string()
+            .describe("Estilo: professional, casual, technical, fun"),
         }),
         execute: async ({ title, description, topic, frequency, style }) => {
           await connectDB();
@@ -52,13 +92,15 @@ Cuando tengas suficiente información, no preguntes más y procede a crear el ne
           return {
             id: newsletter._id.toString(),
             title,
-            message: `Newsletter "${title}" creado. Ahora voy a generar previews.`,
+            frequency,
+            message: `Newsletter "${title}" creado exitosamente.`,
           };
         },
       }),
 
       generatePreview: tool({
-        description: "Genera una edición preview del newsletter",
+        description:
+          "Genera una edición preview del newsletter para mostrársela al usuario. Retorna el HTML del preview.",
         inputSchema: z.object({
           newsletterId: z.string().describe("ID del newsletter"),
           topic: z.string().describe("Tópico del newsletter"),
@@ -67,10 +109,17 @@ Cuando tengas suficiente información, no preguntes más y procede a crear el ne
           title: z.string().describe("Título del newsletter"),
         }),
         execute: async ({ newsletterId, topic, style, frequency, title }) => {
-          const edition = await generateNewsletterEdition(topic, style, frequency, title);
+          const edition = await generateNewsletterEdition(
+            topic,
+            style,
+            frequency,
+            title,
+            { withImage: true, newsletterId }
+          );
 
           await connectDB();
-          await Newsletter.findByIdAndUpdate(newsletterId, {
+
+          const updateData: Record<string, unknown> = {
             $push: {
               previews: {
                 subject: edition.subject,
@@ -79,18 +128,27 @@ Cuando tengas suficiente información, no preguntes más y procede a crear el ne
                 generatedAt: new Date(),
               },
             },
-          });
+          };
+
+          if (edition.headerImageUrl) {
+            updateData.$set = { coverImageUrl: edition.headerImageUrl };
+          }
+
+          await Newsletter.findByIdAndUpdate(newsletterId, updateData);
 
           return {
             subject: edition.subject,
-            sectionCount: edition.sections.length,
+            sections: edition.sections.map((s) => s.title).join(", "),
+            htmlContent: edition.htmlContent,
+            newsletterId,
             message: `Preview generado: "${edition.subject}"`,
           };
         },
       }),
 
       publishNewsletter: tool({
-        description: "Publica el newsletter en el marketplace (después de generar previews)",
+        description:
+          "Publica el newsletter en el marketplace para que otros puedan suscribirse",
         inputSchema: z.object({
           newsletterId: z.string().describe("ID del newsletter"),
         }),
@@ -98,7 +156,8 @@ Cuando tengas suficiente información, no preguntes más y procede a crear el ne
           return {
             id: newsletterId,
             url: `/newsletter/${newsletterId}`,
-            message: "Newsletter publicado en el marketplace. Los usuarios ya pueden verlo y suscribirse.",
+            message:
+              "Newsletter publicado en el marketplace. Los usuarios ya pueden verlo y suscribirse.",
           };
         },
       }),

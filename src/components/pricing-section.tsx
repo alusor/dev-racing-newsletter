@@ -1,6 +1,12 @@
 "use client";
 
-import { calculatePrice, BASE_PRICES } from "@/lib/pricing";
+import {
+  calculatePrice,
+  BASE_PRICES,
+  CREATOR_FREE_THRESHOLD,
+  isCreatorFree,
+  subscribersUntilFree,
+} from "@/lib/pricing";
 
 interface PricingSectionProps {
   frequency: "daily" | "weekly";
@@ -101,13 +107,24 @@ export function PricingSection({
         </div>
       </div>
 
-      <div className="mt-4 p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">
-        <p>
-          Actualmente <strong>{subscriberCount}</strong> suscriptores.
-          {subscriberCount < 35
-            ? ` Con ${35 - subscriberCount} más, el precio baja a $${calculatePrice(frequency, 35).price}/mes.`
-            : " ¡Gran descuento grupal activo!"}
-        </p>
+      <div className="mt-4 space-y-2">
+        <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+          <p>
+            Actualmente <strong>{subscriberCount}</strong> suscriptores.
+            {subscriberCount < 35
+              ? ` Con ${35 - subscriberCount} más, el precio baja a $${calculatePrice(frequency, 35).price}/mes.`
+              : " ¡Gran descuento grupal activo!"}
+          </p>
+        </div>
+        <div className={`p-3 rounded-lg text-xs ${isCreatorFree(subscriberCount) ? "bg-emerald-500/10 text-emerald-400" : "bg-violet-500/10 text-violet-300"}`}>
+          {isCreatorFree(subscriberCount) ? (
+            <p>El creador recibe este newsletter <strong>gratis</strong> — subsidiado por los suscriptores.</p>
+          ) : (
+            <p>
+              Creadores: con <strong>{subscribersUntilFree(subscriberCount)}</strong> suscriptores más (total {CREATOR_FREE_THRESHOLD}), el creador lo recibe <strong>gratis</strong>. ¡Invita a más personas!
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

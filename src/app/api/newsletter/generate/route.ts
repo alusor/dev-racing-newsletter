@@ -29,7 +29,8 @@ export async function POST(req: Request) {
     newsletter.topic,
     newsletter.style,
     newsletter.frequency,
-    newsletter.title
+    newsletter.title,
+    { withImage: !newsletter.coverImageUrl, newsletterId }
   );
 
   newsletter.previews.push({
@@ -38,6 +39,10 @@ export async function POST(req: Request) {
     sections: edition.sections,
     generatedAt: new Date(),
   });
+
+  if (edition.headerImageUrl && !newsletter.coverImageUrl) {
+    newsletter.coverImageUrl = edition.headerImageUrl;
+  }
 
   await newsletter.save();
 
