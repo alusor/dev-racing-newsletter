@@ -18,8 +18,6 @@ export function SubscribeForm({
   const [email, setEmail] = useState("");
   const [selectedFreq, setSelectedFreq] = useState(frequency);
   const [loading, setLoading] = useState(false);
-  const [sendingTest, setSendingTest] = useState(false);
-  const [testSent, setTestSent] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,63 +51,31 @@ export function SubscribeForm({
     }
   };
 
-  const handleSendTest = async () => {
-    if (!email) {
-      setError("Ingresa tu email primero");
-      return;
-    }
-
-    setSendingTest(true);
-    setError("");
-
-    try {
-      const res = await fetch("/api/send-test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, newsletterId }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error al enviar");
-      }
-
-      setTestSent(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error inesperado");
-    } finally {
-      setSendingTest(false);
-    }
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="text-sm font-medium mb-2 block">Email</label>
+        <label className="text-sm font-medium mb-1.5 block">Email</label>
         <Input
           type="email"
           placeholder="tu@email.com"
           value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            setTestSent(false);
-          }}
+          onChange={(e) => setEmail(e.target.value)}
           required
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium mb-2 block">Frecuencia</label>
+        <label className="text-sm font-medium mb-1.5 block">Frecuencia</label>
         <div className="grid grid-cols-2 gap-2">
           {(["daily", "weekly"] as const).map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setSelectedFreq(f)}
-              className={`p-3 rounded-lg border text-sm font-medium transition-all ${
+              className={`p-2.5 rounded-md border text-sm font-medium transition-all ${
                 selectedFreq === f
-                  ? "border-violet-500 bg-violet-500/10 text-violet-300"
-                  : "border-border/50 text-muted-foreground hover:border-border"
+                  ? "border-primary bg-primary/5 text-primary"
+                  : "border-border text-muted-foreground hover:border-foreground/20"
               }`}
             >
               {f === "daily" ? "Diario" : "Semanal"}
@@ -118,25 +84,14 @@ export function SubscribeForm({
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
-
-      <button
-        type="button"
-        onClick={handleSendTest}
-        disabled={sendingTest || !email}
-        className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2 border border-dashed border-border/50 rounded-lg hover:border-border disabled:opacity-50"
-      >
-        {sendingTest
-          ? "Enviando..."
-          : testSent
-            ? "Enviado — revisa tu inbox"
-            : "Enviar preview de prueba a mi email"}
-      </button>
+      {error && (
+        <p className="text-sm text-red-600">{error}</p>
+      )}
 
       <Button
         type="submit"
         disabled={loading}
-        className="w-full bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500"
+        className="w-full"
       >
         {loading ? "Procesando..." : "Continuar al checkout"}
       </Button>
